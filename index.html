@@ -1,10 +1,9 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fettverlust-Rechner</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -72,8 +71,8 @@
       color: #34495e;
       text-align: center;
     }
-	
-	#ungenauigkeit {
+
+    #ungenauigkeit {
       margin-top: 20px;
       font-size: 0.8em;
       color: #34495e;
@@ -91,12 +90,13 @@
       display: none;
     }
 
-    #diagrammContainer {
-      margin-top: 20px;
-    }
-
-    canvas {
-      max-width: 100%;
+    #zusatzInfo {
+      margin-top: 30px;
+      font-size: 0.9em;
+      color: #2c3e50;
+      background-color: #ecf0f1;
+      padding: 15px;
+      border-radius: 10px;
     }
   </style>
 </head>
@@ -115,9 +115,7 @@
       <div class="result" id="ergebnis"></div>
       <div class="result" id="ungenauigkeit"></div>
 
-      <div id="diagrammContainer">
-        <canvas id="chart"></canvas>
-      </div>
+      <div id="zusatzInfo">💡 Tipp: Um 1 kg Körperfett zu verlieren, musst du etwa 7000 kcal einsparen oder verbrennen. Wenn du z. B. 500 kcal pro Tag einsparst, brauchst du etwa 14 Tage für 1 kg. Konsistenz ist entscheidend – kleine tägliche Schritte machen den Unterschied! 🚶‍♂️🥦🔥</div>
 
       <div class="formula">
         Formel: Fettverlust (kg) ≈ (c × d) ÷ 7000
@@ -126,18 +124,34 @@
 
     <div class="side">
       <h2>Aktivitätsrechner</h2>
+
+      <label for="geburt">Geburtsdatum:</label>
+      <input type="date" id="geburt" />
+
       <label for="gewicht">Dein Gewicht (kg):</label>
       <input type="number" id="gewicht" placeholder="z. B. 70" />
 
       <label for="activity">Aktivität:</label>
       <select id="activity" onchange="toggleActivity()">
+        <option value="walk">🚶 Spazieren</option>
+        <option value="jog">🏃 Joggen</option>
+        <option value="treadmill">🏃‍♂️ Laufband</option>
         <option value="bike">🚴‍♂️ Radfahren</option>
-        <option value="treadmill">🏃 Laufband</option>
+        <option value="swim">🏊 Schwimmen</option>
       </select>
 
-      <div id="bikeInputs">
-        <label for="bikeMinutes">Dauer (in Minuten):</label>
-        <input type="number" id="bikeMinutes" placeholder="z. B. 60" />
+      <div id="walkInputs" class="hidden">
+        <label for="walkMinutes">Dauer (in Minuten):</label>
+        <input type="number" id="walkMinutes" placeholder="z. B. 30" />
+        <label for="walkStep">Schrittlänge (in cm):</label>
+        <input type="number" id="walkStep" placeholder="z. B. 70" />
+      </div>
+
+      <div id="jogInputs" class="hidden">
+        <label for="jogMinutes">Dauer (in Minuten):</label>
+        <input type="number" id="jogMinutes" placeholder="z. B. 30" />
+        <label for="jogStep">Schrittlänge (in cm):</label>
+        <input type="number" id="jogStep" placeholder="z. B. 80" />
       </div>
 
       <div id="treadmillInputs" class="hidden">
@@ -147,21 +161,45 @@
         <input type="number" id="treadMinutes" placeholder="z. B. 30" />
       </div>
 
+      <div id="bikeInputs" class="hidden">
+        <label for="bikeMinutes">Dauer (in Minuten):</label>
+        <input type="number" id="bikeMinutes" placeholder="z. B. 60" />
+      </div>
+
+      <div id="swimInputs" class="hidden">
+        <label for="swimMinutes">Dauer (in Minuten):</label>
+        <input type="number" id="swimMinutes" placeholder="z. B. 30" />
+      </div>
+
       <button onclick="berechneKalorien()">Kalorien berechnen ➜ ersetzt c</button>
     </div>
   </div>
 
   <script>
-    let chart;
+    function berechneAlter(geburtsdatum) {
+      const heute = new Date();
+      const geburt = new Date(geburtsdatum);
+      let alter = heute.getFullYear() - geburt.getFullYear();
+      const m = heute.getMonth() - geburt.getMonth();
+      if (m < 0 || (m === 0 && heute.getDate() < geburt.getDate())) {
+        alter--;
+      }
+      return alter;
+    }
 
     function toggleActivity() {
       const activity = document.getElementById("activity").value;
-      document.getElementById("bikeInputs").classList.toggle("hidden", activity !== "bike");
-      document.getElementById("treadmillInputs").classList.toggle("hidden", activity !== "treadmill");
+      const activities = ["walk", "jog", "treadmill", "bike", "swim"];
+      activities.forEach(act => {
+        document.getElementById(act + "Inputs").classList.add("hidden");
+      });
+      document.getElementById(activity + "Inputs").classList.remove("hidden");
     }
 
     function berechneKalorien() {
       const gewicht = parseFloat(document.getElementById("gewicht").value);
+      const geburt = document.getElementById("geburt").value;
+      const alter = geburt ? berechneAlter(geburt) : 30;
       const activity = document.getElementById("activity").value;
       let kcal = 0;
 
@@ -170,23 +208,44 @@
         return;
       }
 
-      if (activity === "bike") {
-        const min = parseFloat(document.getElementById("bikeMinutes").value);
-        if (!isNaN(min)) {
-          const MET = 8; // Radfahren
-          kcal = (MET * 3.5 * gewicht / 200) * min;
-        }
+      let altersFaktor = 1;
+      if (alter < 18) altersFaktor = 1.05;
+      else if (alter > 50) altersFaktor = 0.92;
+      else if (alter > 65) altersFaktor = 0.88;
+
+      const faktor = (3.5 * gewicht / 200) * altersFaktor;
+
+      if (activity === "walk") {
+        const min = parseFloat(document.getElementById("walkMinutes").value);
+        const MET = 3.5;
+        if (!isNaN(min)) kcal = MET * faktor * min;
+      } else if (activity === "jog") {
+        const min = parseFloat(document.getElementById("jogMinutes").value);
+        const MET = 7;
+        if (!isNaN(min)) kcal = MET * faktor * min;
       } else if (activity === "treadmill") {
         const min = parseFloat(document.getElementById("treadMinutes").value);
         const speed = parseFloat(document.getElementById("treadSpeed").value);
         if (!isNaN(min) && !isNaN(speed)) {
-          let MET = 3;
-          if (speed >= 5 && speed < 6) MET = 4.3;
+          let MET = 2;
+          if (speed < 3) MET = 2;
+          else if (speed >= 3 && speed < 4) MET = 2.8;
+          else if (speed >= 4 && speed < 5) MET = 3.3;
+          else if (speed >= 5 && speed < 6) MET = 4.3;
           else if (speed >= 6 && speed < 7) MET = 5;
-          else if (speed >= 7 && speed < 8) MET = 7;
-          else if (speed >= 8) MET = 8;
-          kcal = (MET * 3.5 * gewicht / 200) * min;
+          else if (speed >= 7 && speed < 8) MET = 6;
+          else if (speed >= 8 && speed < 9) MET = 8;
+          else MET = 9;
+          kcal = MET * faktor * min;
         }
+      } else if (activity === "bike") {
+        const min = parseFloat(document.getElementById("bikeMinutes").value);
+        const MET = 8;
+        if (!isNaN(min)) kcal = MET * faktor * min;
+      } else if (activity === "swim") {
+        const min = parseFloat(document.getElementById("swimMinutes").value);
+        const MET = 9;
+        if (!isNaN(min)) kcal = MET * faktor * min;
       }
 
       if (!isNaN(kcal) && kcal > 0) {
@@ -201,9 +260,11 @@
       const d = parseFloat(document.getElementById("d").value);
       const result = document.getElementById("ergebnis");
       const ungenau = document.getElementById("ungenauigkeit");
+      const zusatz = document.getElementById("zusatzInfo");
 
       if (isNaN(c) || isNaN(d)) {
         result.innerHTML = "⚠️ Bitte gültige Zahlen eingeben!";
+        zusatz.innerHTML = "";
         return;
       }
 
@@ -213,33 +274,6 @@
 
       result.innerHTML = `🧮 Geschätzter Fettverlust: <strong>${fettverlust.toFixed(2)} kg</strong>`;
       ungenau.innerHTML = `📉 Ungenauigkeit ~±25%; Fettverlust kann zwischen <strong>${minFett.toFixed(2)} kg</strong> und <strong>${maxFett.toFixed(2)} kg</strong> liegen.`;
-
-      zeigeDiagramm(fettverlust, minFett, maxFett);
-    }
-
-    function zeigeDiagramm(mittelwert, min, max) {
-      const ctx = document.getElementById("chart").getContext("2d");
-      if (chart) chart.destroy();
-
-      chart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: ['Minimum', 'Durchschnitt', 'Maximum'],
-          datasets: [{
-            label: 'Fettverlust (kg)',
-            data: [min, mittelwert, max],
-            backgroundColor: ['#e74c3c', '#3498db', '#2ecc71']
-          }]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            y: {
-              beginAtZero: true
-            }
-          }
-        }
-      });
     }
   </script>
 </body>
