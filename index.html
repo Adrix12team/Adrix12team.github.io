@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fettverlust-Rechner</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f5f8fa;
+      padding: 30px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      gap: 30px;
+    }
+
+    .main, .side {
+      flex: 1;
+    }
+
+    h2 {
+      text-align: center;
+      color: #2c3e50;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 15px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px;
+      font-size: 1em;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin-top: 5px;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 20px;
+      padding: 12px;
+      font-size: 1em;
+      background: #27ae60;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.2s ease-in-out;
+    }
+
+    button:hover {
+      background: #219150;
+    }
+
+    #ergebnis {
+      margin-top: 20px;
+      font-size: 1.2em;
+      color: #34495e;
+      text-align: center;
+    }
+	
+	#ungenauigkeit {
+      margin-top: 20px;
+      font-size: 0.8em;
+      color: #34495e;
+      text-align: center;
+    }
+
+    .formula {
+      margin-top: 30px;
+      font-size: 0.95em;
+      color: #7f8c8d;
+      text-align: center;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    #diagrammContainer {
+      margin-top: 20px;
+    }
+
+    canvas {
+      max-width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="main">
+      <h2>Fettverlust-Rechner</h2>
+      <label for="c">Eingesparte/verbrannte kcal pro Tag (c):</label>
+      <input type="number" id="c" placeholder="z. B. 500" />
+
+      <label for="d">Tage der Einsparung/Verbrennung (d):</label>
+      <input type="number" id="d" placeholder="z. B. 30" />
+
+      <button onclick="berechneFett()">Fettverlust berechnen</button>
+
+      <div class="result" id="ergebnis"></div>
+      <div class="result" id="ungenauigkeit"></div>
+
+      <div id="diagrammContainer">
+        <canvas id="chart"></canvas>
+      </div>
+
+      <div class="formula">
+        Formel: Fettverlust (kg) ≈ (c × d) ÷ 7000
+      </div>
+    </div>
+
+    <div class="side">
+      <h2>Aktivitätsrechner</h2>
+      <label for="gewicht">Dein Gewicht (kg):</label>
+      <input type="number" id="gewicht" placeholder="z. B. 70" />
+
+      <label for="activity">Aktivität:</label>
+      <select id="activity" onchange="toggleActivity()">
+        <option value="bike">🚴‍♂️ Radfahren</option>
+        <option value="treadmill">🏃 Laufband</option>
+      </select>
+
+      <div id="bikeInputs">
+        <label for="bikeMinutes">Dauer (in Minuten):</label>
+        <input type="number" id="bikeMinutes" placeholder="z. B. 60" />
+      </div>
+
+      <div id="treadmillInputs" class="hidden">
+        <label for="treadSpeed">Geschwindigkeit (km/h):</label>
+        <input type="number" id="treadSpeed" placeholder="z. B. 6" />
+        <label for="treadMinutes">Dauer (in Minuten):</label>
+        <input type="number" id="treadMinutes" placeholder="z. B. 30" />
+      </div>
+
+      <button onclick="berechneKalorien()">Kalorien berechnen ➜ ersetzt c</button>
+    </div>
+  </div>
+
+  <script>
+    let chart;
+
+    function toggleActivity() {
+      const activity = document.getElementById("activity").value;
+      document.getElementById("bikeInputs").classList.toggle("hidden", activity !== "bike");
+      document.getElementById("treadmillInputs").classList.toggle("hidden", activity !== "treadmill");
+    }
+
+    function berechneKalorien() {
+      const gewicht = parseFloat(document.getElementById("gewicht").value);
+      const activity = document.getElementById("activity").value;
+      let kcal = 0;
+
+      if (isNaN(gewicht) || gewicht <= 0) {
+        alert("Bitte ein gültiges Gewicht eingeben!");
+        return;
+      }
+
+      if (activity === "bike") {
+        const min = parseFloat(document.getElementById("bikeMinutes").value);
+        if (!isNaN(min)) {
+          const MET = 8; // Radfahren
+          kcal = (MET * 3.5 * gewicht / 200) * min;
+        }
+      } else if (activity === "treadmill") {
+        const min = parseFloat(document.getElementById("treadMinutes").value);
+        const speed = parseFloat(document.getElementById("treadSpeed").value);
+        if (!isNaN(min) && !isNaN(speed)) {
+          let MET = 3;
+          if (speed >= 5 && speed < 6) MET = 4.3;
+          else if (speed >= 6 && speed < 7) MET = 5;
+          else if (speed >= 7 && speed < 8) MET = 7;
+          else if (speed >= 8) MET = 8;
+          kcal = (MET * 3.5 * gewicht / 200) * min;
+        }
+      }
+
+      if (!isNaN(kcal) && kcal > 0) {
+        document.getElementById("c").value = Math.round(kcal);
+      } else {
+        alert("Bitte gültige Werte eingeben!");
+      }
+    }
+
+    function berechneFett() {
+      const c = parseFloat(document.getElementById("c").value);
+      const d = parseFloat(document.getElementById("d").value);
+      const result = document.getElementById("ergebnis");
+      const ungenau = document.getElementById("ungenauigkeit");
+
+      if (isNaN(c) || isNaN(d)) {
+        result.innerHTML = "⚠️ Bitte gültige Zahlen eingeben!";
+        return;
+      }
+
+      const fettverlust = (c * d) / 7000;
+      const minFett = fettverlust * 0.75;
+      const maxFett = fettverlust * 1.25;
+
+      result.innerHTML = `🧮 Geschätzter Fettverlust: <strong>${fettverlust.toFixed(2)} kg</strong>`;
+      ungenau.innerHTML = `📉 Ungenauigkeit ~±25%; Fettverlust kann zwischen <strong>${minFett.toFixed(2)} kg</strong> und <strong>${maxFett.toFixed(2)} kg</strong> liegen.`;
+
+      zeigeDiagramm(fettverlust, minFett, maxFett);
+    }
+
+    function zeigeDiagramm(mittelwert, min, max) {
+      const ctx = document.getElementById("chart").getContext("2d");
+      if (chart) chart.destroy();
+
+      chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Minimum', 'Durchschnitt', 'Maximum'],
+          datasets: [{
+            label: 'Fettverlust (kg)',
+            data: [min, mittelwert, max],
+            backgroundColor: ['#e74c3c', '#3498db', '#2ecc71']
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>
